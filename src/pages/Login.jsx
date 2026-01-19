@@ -81,8 +81,8 @@ const Login = () => {
         <div className="text-center mb-8">
           <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center bg-white p-2 shadow">
             <img
-              src="querylogo.png"
-              alt="Query Logo"
+              src="sks-logo.png"
+              alt="SKS Logo"
               className="w-full h-full object-contain"
             />
           </div>
@@ -91,7 +91,7 @@ const Login = () => {
             className="text-3xl font-bold mb-2"
             style={{ color: themeColors.primary }}
           >
-            Espejo
+            SKS Laddu
           </h1>
 
           <p
