@@ -452,12 +452,6 @@ export default function Orders() {
                         <div>
                           Subtotal: {fmtCurrency(o.subtotal)}
                         </div>
-                        <div>
-                          Discount:{" "}
-                          {o.discount
-                            ? `- ${fmtCurrency(o.discount)}`
-                            : fmtCurrency(0)}
-                        </div>
                         <div className="font-semibold">
                           Total: {fmtCurrency(o.total)}
                         </div>
