@@ -359,18 +359,38 @@ export default function Categories() {
             />
           </div>
 
-          <button
-            onClick={() => setStatusFilter(statusFilter === 'active' ? 'inactive' : 'active')}
-            className="px-3 py-2 rounded-lg border text-sm flex items-center gap-2"
+          {/* Status Filter Toggle */}
+          <div className="flex items-center gap-1 p-1 rounded-lg border"
             style={{
-              backgroundColor: statusFilter === 'inactive' ? themeColors.danger : themeColors.primary,
+              backgroundColor: themeColors.surface,
               borderColor: themeColors.border,
-              color: themeColors.onPrimary,
             }}
-            title={`Switch to ${statusFilter === 'active' ? 'inactive' : 'active'} categories`}
           >
-            {statusFilter === 'active' ? 'Active' : 'Inactive'}
-          </button>
+            <button
+              onClick={() => setStatusFilter("active")}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                statusFilter === "active" ? "" : "opacity-60"
+              }`}
+              style={{
+                backgroundColor: statusFilter === "active" ? themeColors.primary : "transparent",
+                color: statusFilter === "active" ? themeColors.onPrimary : themeColors.text,
+              }}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setStatusFilter("inactive")}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                statusFilter === "inactive" ? "" : "opacity-60"
+              }`}
+              style={{
+                backgroundColor: statusFilter === "inactive" ? themeColors.primary : "transparent",
+                color: statusFilter === "inactive" ? themeColors.onPrimary : themeColors.text,
+              }}
+            >
+              Inactive
+            </button>
+          </div>
 
           <button
             onClick={fetchCategories}
@@ -699,7 +719,7 @@ export default function Categories() {
                     borderColor: themeColors.border,
                     color: themeColors.text,
                   }}
-                  placeholder="e.g. Electronics"
+                  placeholder="Category Name"
                 />
               </div>
 

@@ -478,18 +478,38 @@ export default function Products() {
             />
           </div>
 
-          <button
-            onClick={() => setStatusFilter(statusFilter === 'active' ? 'inactive' : 'active')}
-            className="px-3 py-2 rounded-lg border text-sm flex items-center gap-2"
+          {/* Status Filter Toggle */}
+          <div className="flex items-center gap-1 p-1 rounded-lg border"
             style={{
-              backgroundColor: statusFilter === 'inactive' ? themeColors.danger : themeColors.primary,
+              backgroundColor: themeColors.surface,
               borderColor: themeColors.border,
-              color: themeColors.onPrimary,
             }}
-            title={`Switch to ${statusFilter === 'active' ? 'inactive' : 'active'} products`}
           >
-            {statusFilter === 'active' ? 'Active' : 'Inactive'}
-          </button>
+            <button
+              onClick={() => setStatusFilter("active")}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                statusFilter === "active" ? "" : "opacity-60"
+              }`}
+              style={{
+                backgroundColor: statusFilter === "active" ? themeColors.primary : "transparent",
+                color: statusFilter === "active" ? themeColors.onPrimary : themeColors.text,
+              }}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setStatusFilter("inactive")}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                statusFilter === "inactive" ? "" : "opacity-60"
+              }`}
+              style={{
+                backgroundColor: statusFilter === "inactive" ? themeColors.primary : "transparent",
+                color: statusFilter === "inactive" ? themeColors.onPrimary : themeColors.text,
+              }}
+            >
+              Inactive
+            </button>
+          </div>
 
           <button
             onClick={fetchProducts}
@@ -549,7 +569,7 @@ export default function Products() {
           <button
             onClick={openAddModal}
             disabled={!isLoggedIn}
-            className="px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               backgroundColor: themeColors.primary,
               color: themeColors.onPrimary,
@@ -559,7 +579,7 @@ export default function Products() {
             }
           >
             <FaPlus />
-            Add Product
+            Add
           </button>
         </div>
       </div>
@@ -1192,7 +1212,7 @@ export default function Products() {
                       borderColor: themeColors.border,
                       color: themeColors.text,
                     }}
-                    placeholder="Single Door Cabinet"
+                    placeholder="Product Name"
                   />
                 </div>
 
@@ -1249,7 +1269,7 @@ export default function Products() {
                       borderColor: themeColors.border,
                       color: themeColors.text,
                     }}
-                    placeholder="13395"
+                    placeholder=""
                   />
                 </div>
 
@@ -1276,7 +1296,7 @@ export default function Products() {
                       borderColor: themeColors.border,
                       color: themeColors.text,
                     }}
-                    placeholder="5"
+                    placeholder=""
                   />
                 </div>
 
@@ -1301,7 +1321,7 @@ export default function Products() {
                       borderColor: themeColors.border,
                       color: themeColors.text,
                     }}
-                    placeholder="Premium LED mirror cabinet"
+                    placeholder="About product"
                   />
                 </div>
 
@@ -1326,7 +1346,7 @@ export default function Products() {
                       borderColor: themeColors.border,
                       color: themeColors.text,
                     }}
-                    placeholder="Glass, LED, etc."
+                    placeholder="Desi ghee,Besan etc."
                   />
                 </div>
 
@@ -1351,7 +1371,7 @@ export default function Products() {
                       borderColor: themeColors.border,
                       color: themeColors.text,
                     }}
-                    placeholder="5 years"
+                    placeholder="2 days"
                   />
                 </div>
 
@@ -1376,7 +1396,7 @@ export default function Products() {
                       borderColor: themeColors.border,
                       color: themeColors.text,
                     }}
-                    placeholder="2.5 kg"
+                    placeholder="1 kg"
                   />
                 </div>
 
