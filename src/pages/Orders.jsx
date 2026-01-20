@@ -406,7 +406,7 @@ export default function Orders() {
                         className="px-4 py-2 font-mono text-xs"
                         style={{ color: themeColors.text }}
                       >
-                        {id}
+                        {id.slice(-6)}
                       </td>
 
                       {/* Customer */}
