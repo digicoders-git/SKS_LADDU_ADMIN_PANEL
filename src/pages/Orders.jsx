@@ -4,10 +4,13 @@ import { useTheme } from "../context/ThemeContext";
 import { useFont } from "../context/FontContext";
 import { useAuth } from "../context/AuthContext";
 import { listOrders, updateOrderStatus } from "../apis/orders";
+import { createShiprocketOrder, getShiprocketTracking } from "../apis/shiprocket";
 import {
   FaShoppingCart,
   FaSyncAlt,
   FaSearch,
+  FaTruck,
+  FaEye,
 } from "react-icons/fa";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
@@ -34,7 +37,7 @@ const STATUS_OPTIONS = [
   "cancelled",
 ];
 
-export default function Orders() {
+function Orders() {
   const { themeColors } = useTheme();
   const { currentFont } = useFont();
   const { isLoggedIn } = useAuth();
@@ -42,6 +45,7 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [shiprocketLoading, setShiprocketLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
@@ -51,14 +55,32 @@ export default function Orders() {
     try {
       setLoading(true);
       setError("");
+      
+      // Check token expiry before API call
+      const tokenExpiry = localStorage.getItem("admin-token-expiry");
+      if (tokenExpiry && Date.now() > parseInt(tokenExpiry)) {
+        // Token expired, clear localStorage and redirect
+        localStorage.removeItem("admin-data");
+        localStorage.removeItem("admin-token");
+        localStorage.removeItem("admin-token-expiry");
+        setError("Session expired. Please login again.");
+        setTimeout(() => window.location.href = "/login", 2000);
+        return;
+      }
+      
       const list = await listOrders();
       setOrders(list);
     } catch (e) {
-      setError(
-        e?.response?.data?.message ||
-          e?.message ||
-          "Failed to load orders."
-      );
+      if (e.response?.status === 401 || e.message === "Token expired") {
+        setError("Session expired. Please login again.");
+        setTimeout(() => window.location.href = "/login", 2000);
+      } else {
+        setError(
+          e?.response?.data?.message ||
+            e?.message ||
+            "Failed to load orders."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -67,6 +89,116 @@ export default function Orders() {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  const handleCreateShiprocketOrder = async (order) => {
+    if (!isLoggedIn) {
+      setError("You must be logged in as admin.");
+      return;
+    }
+
+    if (order.shiprocketCreated) {
+      setError("Shiprocket order already created for this order.");
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "Create Shiprocket Order?",
+      text: `Create shipping order for ${order._id}?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, create",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setShiprocketLoading(true);
+      setError("");
+      setSuccess("");
+
+      const response = await createShiprocketOrder(order._id || order.id);
+
+      // Update local state
+      setOrders((prev) =>
+        prev.map((o) =>
+          (o._id || o.id) === (order._id || order.id)
+            ? {
+                ...o,
+                shiprocketCreated: true,
+                shiprocketOrderId: response.shiprocketOrderId,
+                shipmentId: response.shipmentId,
+                awbCode: response.awbCode || "",
+                courierName: response.courierName || "",
+              }
+            : o
+        )
+      );
+
+      setSuccess("Shiprocket order created successfully.");
+      Swal.fire({
+        icon: "success",
+        title: "Created",
+        text: "Shiprocket order created successfully.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (e) {
+      if (e.response?.status === 401 || e.message === "Token expired") {
+        setError("Session expired. Please login again.");
+        setTimeout(() => window.location.href = "/login", 2000);
+      } else {
+        const msg =
+          e?.response?.data?.message ||
+          e?.message ||
+          "Failed to create Shiprocket order.";
+        setError(msg);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: msg,
+        });
+      }
+    } finally {
+      setShiprocketLoading(false);
+    }
+  };
+
+  const handleTrackOrder = async (order) => {
+    if (!order.awbCode) {
+      setError("No AWB code available for tracking.");
+      return;
+    }
+
+    try {
+      setShiprocketLoading(true);
+      const trackingData = await getShiprocketTracking(order.awbCode);
+      
+      Swal.fire({
+        title: "Order Tracking",
+        html: `
+          <div class="text-left">
+            <p><strong>AWB Code:</strong> ${order.awbCode}</p>
+            <p><strong>Courier:</strong> ${order.courierName || 'N/A'}</p>
+            <p><strong>Status:</strong> ${trackingData.status || 'N/A'}</p>
+            <p><strong>Location:</strong> ${trackingData.location || 'N/A'}</p>
+          </div>
+        `,
+        icon: "info",
+        confirmButtonText: "Close",
+      });
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || "Failed to get tracking info.";
+      Swal.fire({
+        icon: "error",
+        title: "Tracking Error",
+        text: msg,
+      });
+    } finally {
+      setShiprocketLoading(false);
+    }
+  };
 
   const handleStatusChange = async (order, newStatus) => {
     if (!isLoggedIn) {
@@ -95,7 +227,7 @@ export default function Orders() {
 
       await updateOrderStatus(order._id || order.id, newStatus);
 
-      // local state update
+      // Update local state first
       setOrders((prev) =>
         prev.map((o) =>
           (o._id || o.id) === (order._id || order.id)
@@ -104,19 +236,60 @@ export default function Orders() {
         )
       );
 
-      setSuccess("Order status updated successfully.");
-      Swal.fire({
-        icon: "success",
-        title: "Updated",
-        text: "Order status updated successfully.",
-        timer: 1500,
-        showConfirmButton: false,
-      });
+      // Auto-create Shiprocket when status = "confirmed" for COD orders
+      if (newStatus === "confirmed" && !order.shiprocketCreated && order.paymentMethod === "COD") {
+        try {
+          setShiprocketLoading(true);
+          const response = await createShiprocketOrder(order._id || order.id);
+          
+          // Update with Shiprocket data
+          setOrders((prev) =>
+            prev.map((o) =>
+              (o._id || o.id) === (order._id || order.id)
+                ? {
+                    ...o,
+                    shiprocketCreated: true,
+                    shiprocketOrderId: response.shiprocketOrderId,
+                    shipmentId: response.shipmentId,
+                    awbCode: response.awbCode || "",
+                    courierName: response.courierName || "",
+                  }
+                : o
+            )
+          );
+          
+          setSuccess("Order confirmed and Shiprocket order created successfully!");
+          Swal.fire({
+            icon: "success",
+            title: "Success!",
+            text: "Order confirmed and Shiprocket order created successfully!",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+        } catch (shiprocketError) {
+          console.error("Shiprocket creation failed:", shiprocketError);
+          setSuccess("Order status updated but Shiprocket creation failed.");
+          Swal.fire({
+            icon: "warning",
+            title: "Partial Success",
+            text: "Order status updated but Shiprocket creation failed.",
+            timer: 2000,
+          });
+        } finally {
+          setShiprocketLoading(false);
+        }
+      } else {
+        setSuccess("Order status updated successfully.");
+        Swal.fire({
+          icon: "success",
+          title: "Updated",
+          text: "Order status updated successfully.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
     } catch (e) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.message ||
-        "Failed to update order status.";
+      const msg = e?.response?.data?.message || e?.message || "Failed to update order status.";
       setError(msg);
       Swal.fire({
         icon: "error",
@@ -349,6 +522,7 @@ export default function Orders() {
                   "Amount",
                   "Offer",
                   "Status",
+                  "Shiprocket",
                   "Payment",
                   "Created",
                 ].map((h) => (
@@ -369,7 +543,7 @@ export default function Orders() {
               {loading ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-6 text-center text-sm"
                     style={{ color: themeColors.text }}
                   >
@@ -379,7 +553,7 @@ export default function Orders() {
               ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-6 text-center text-sm"
                     style={{ color: themeColors.text }}
                   >
@@ -493,6 +667,82 @@ export default function Orders() {
                         </div>
                       </td>
 
+                      {/* Shiprocket */}
+                      <td className="px-4 py-2 text-xs">
+                        {o.shiprocketCreated ? (
+                          <div className="space-y-1">
+                            <div
+                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold"
+                              style={{
+                                backgroundColor: (themeColors.success || themeColors.primary) + "20",
+                                color: themeColors.success || themeColors.primary,
+                              }}
+                            >
+                              ✓ Created
+                            </div>
+                            {o.shiprocketOrderId && (
+                              <div className="text-[10px] opacity-70">
+                                ID: {o.shiprocketOrderId}
+                              </div>
+                            )}
+                            {o.awbCode && (
+                              <div className="text-[10px] opacity-70">
+                                AWB: {o.awbCode}
+                              </div>
+                            )}
+                            {o.courierName && (
+                              <div className="text-[10px] opacity-70">
+                                {o.courierName}
+                              </div>
+                            )}
+                            <div className="flex gap-1 mt-1">
+                              {o.awbCode && (
+                                <button
+                                  onClick={() => handleTrackOrder(o)}
+                                  disabled={shiprocketLoading}
+                                  className="px-2 py-1 rounded text-[10px] flex items-center gap-1"
+                                  style={{
+                                    backgroundColor: themeColors.primary + "20",
+                                    color: themeColors.primary,
+                                  }}
+                                  title="Track Order"
+                                >
+                                  <FaEye size={8} />
+                                  Track
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div
+                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold"
+                              style={{
+                                backgroundColor: themeColors.background + "80",
+                                color: themeColors.text,
+                              }}
+                            >
+                              Not Created
+                            </div>
+                            {(o.paymentMethod === "COD" && !o.shiprocketCreated) && (
+                              <button
+                                onClick={() => handleCreateShiprocketOrder(o)}
+                                disabled={!isLoggedIn || shiprocketLoading}
+                                className="px-2 py-1 rounded text-[10px] flex items-center gap-1 mt-1"
+                                style={{
+                                  backgroundColor: themeColors.primary + "20",
+                                  color: themeColors.primary,
+                                }}
+                                title="Create Shiprocket Order"
+                              >
+                                <FaTruck size={8} />
+                                Create
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+
                       {/* Payment */}
                       <td
                         className="px-4 py-2 text-xs"
@@ -540,3 +790,5 @@ export default function Orders() {
     </div>
   );
 }
+
+export default Orders;

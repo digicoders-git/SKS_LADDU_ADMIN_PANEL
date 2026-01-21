@@ -5,6 +5,7 @@ const AuthContext = createContext();
 
 const USER_KEY = "admin-data";
 const TOKEN_KEY = "admin-token";
+const TOKEN_EXPIRY_KEY = "admin-token-expiry";
 
 export const AuthProvider = ({ children }) => {
   // admin object: { adminId, name, id, token }
@@ -16,6 +17,17 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const savedUser = localStorage.getItem(USER_KEY);
     const savedToken = localStorage.getItem(TOKEN_KEY);
+    const tokenExpiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+
+    // Check if token is expired
+    if (tokenExpiry && Date.now() > parseInt(tokenExpiry)) {
+      // Token expired, clear everything
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_EXPIRY_KEY);
+      setLoading(false);
+      return;
+    }
 
     if (savedUser) {
       try {
@@ -40,8 +52,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem(USER_KEY, JSON.stringify(adminData));
     if (adminData?.token) {
       localStorage.setItem(TOKEN_KEY, adminData.token);
+      // Set expiry time to 7 days from now
+      const expiryTime = Date.now() + (7 * 24 * 60 * 60 * 1000);
+      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
     } else {
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_EXPIRY_KEY);
     }
   };
 
@@ -50,6 +66,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
   };
 
   const isLoggedIn = Boolean(admin && token);
