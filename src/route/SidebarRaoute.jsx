@@ -23,9 +23,11 @@ const Sliders = lazy(() => import("../pages/Sliders"));
 const ReviewVideos = lazy(() => import("../pages/ReviewVideos"));
 const Blogs = lazy(() => import("../pages/Blogs"));
 const ChangePassword = lazy(() => import("../pages/ChangePassword"));
+const Users = lazy(() => import("../pages/Users"));
 
 const routes = [
   { path: "/dashboard", component: Dashboard, name: "Dashboard", icon: FaTachometerAlt },
+  { path: "/users", component: Users, name: "Users", icon: FaUsers },
   { path: "/categories", component: Categories, name: "Categories", icon: FaBox },
   { path: "/products", component: Products, name: "Products", icon: FaBox },
   // { path: "/offers", component: Offers, name: "Offers", icon: FaCoins },

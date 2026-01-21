@@ -4,6 +4,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useFont } from "../context/FontContext";
 import { useAuth } from "../context/AuthContext";
 import { listEnquiries, updateEnquiry } from "../apis/enquiry";
+import Pagination from "../components/Pagination";
 import {
   FaEnvelopeOpenText,
   FaSyncAlt,
@@ -15,9 +16,9 @@ import "sweetalert2/dist/sweetalert2.min.css";
 const fmtDateTime = (iso) =>
   iso
     ? new Date(iso).toLocaleString("en-IN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
+      dateStyle: "medium",
+      timeStyle: "short",
+    })
     : "-";
 
 // Possible enquiry statuses (assumption)
@@ -38,17 +39,27 @@ export default function Enquiries() {
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const [selected, setSelected] = useState(null); // detail view right panel
 
-  const fetchEnquiries = async () => {
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0
+  });
+
+  const fetchEnquiries = async (page = 1) => {
     try {
       setLoading(true);
       setError("");
-      const list = await listEnquiries();
-      setEnquiries(list);
+      const res = await listEnquiries(page, 10);
+      setEnquiries(res.enquiries || []);
+      if (res.pagination) {
+        setPagination(res.pagination);
+      }
     } catch (e) {
       setError(
         e?.response?.data?.message ||
-          e?.message ||
-          "Failed to load enquiries."
+        e?.message ||
+        "Failed to load enquiries."
       );
     } finally {
       setLoading(false);
@@ -56,8 +67,12 @@ export default function Enquiries() {
   };
 
   useEffect(() => {
-    fetchEnquiries();
+    fetchEnquiries(1);
   }, []);
+
+  const handlePageChange = (newPage) => {
+    fetchEnquiries(newPage);
+  };
 
   const handleUpdate = async (enquiry, extra = {}) => {
     if (!isLoggedIn) {
@@ -524,6 +539,9 @@ export default function Enquiries() {
               </tbody>
             </table>
           </div>
+          {!loading && pagination.totalPages > 1 && (
+            <Pagination pagination={pagination} onPageChange={handlePageChange} />
+          )}
         </div>
 
         {/* Detail panel */}

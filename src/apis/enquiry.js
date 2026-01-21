@@ -2,10 +2,9 @@
 import http from "./http";
 
 // GET /enquiry  (admin list)
-export const listEnquiries = async () => {
-  const { data } = await http.get("/enquiry");
-  // backend: { enquiries: [...] } या direct array
-  return Array.isArray(data) ? data : data.enquiries || [];
+export const listEnquiries = async (page = 1, limit = 10) => {
+  const { data } = await http.get(`/enquiry?page=${page}&limit=${limit}`);
+  return data;
 };
 
 // PATCH /enquiry/:enquiryId  (admin update)

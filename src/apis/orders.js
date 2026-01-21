@@ -2,10 +2,9 @@
 import http from "./http";
 
 // GET /orders  (admin list)
-export const listOrders = async () => {
-  const { data } = await http.get("/orders");
-  // backend: { orders: [...] } ya direct array
-  return Array.isArray(data) ? data : data.orders || [];
+export const listOrders = async (page = 1, limit = 10) => {
+  const { data } = await http.get(`/orders?page=${page}&limit=${limit}`);
+  return data;
 };
 
 // PUT /orders/:orderId/status  (admin update status)

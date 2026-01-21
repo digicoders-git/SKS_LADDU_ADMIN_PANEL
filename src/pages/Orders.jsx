@@ -4,6 +4,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useFont } from "../context/FontContext";
 import { useAuth } from "../context/AuthContext";
 import { listOrders, updateOrderStatus } from "../apis/orders";
+import Pagination from "../components/Pagination";
 import { createShiprocketOrder, getShiprocketTracking } from "../apis/shiprocket";
 import {
   FaShoppingCart,
@@ -18,9 +19,9 @@ import "sweetalert2/dist/sweetalert2.min.css";
 const fmtDateTime = (iso) =>
   iso
     ? new Date(iso).toLocaleString("en-IN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
+      dateStyle: "medium",
+      timeStyle: "short",
+    })
     : "-";
 
 const fmtCurrency = (n) =>
@@ -51,44 +52,41 @@ function Orders() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const fetchOrders = async () => {
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0
+  });
+
+  const fetchOrders = async (page = 1) => {
     try {
       setLoading(true);
       setError("");
-      
-      // Check token expiry before API call
-      const tokenExpiry = localStorage.getItem("admin-token-expiry");
-      if (tokenExpiry && Date.now() > parseInt(tokenExpiry)) {
-        // Token expired, clear localStorage and redirect
-        localStorage.removeItem("admin-data");
-        localStorage.removeItem("admin-token");
-        localStorage.removeItem("admin-token-expiry");
-        setError("Session expired. Please login again.");
-        setTimeout(() => window.location.href = "/login", 2000);
-        return;
+
+      const res = await listOrders(page, 10);
+      setOrders(res.orders || []);
+      if (res.pagination) {
+        setPagination(res.pagination);
       }
-      
-      const list = await listOrders();
-      setOrders(list);
     } catch (e) {
-      if (e.response?.status === 401 || e.message === "Token expired") {
-        setError("Session expired. Please login again.");
-        setTimeout(() => window.location.href = "/login", 2000);
-      } else {
-        setError(
-          e?.response?.data?.message ||
-            e?.message ||
-            "Failed to load orders."
-        );
-      }
+      setError(
+        e?.response?.data?.message ||
+        e?.message ||
+        "Failed to load orders."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOrders();
+    fetchOrders(1);
   }, []);
+
+  const handlePageChange = (newPage) => {
+    fetchOrders(newPage);
+  };
 
   const handleCreateShiprocketOrder = async (order) => {
     if (!isLoggedIn) {
@@ -125,18 +123,18 @@ function Orders() {
         prev.map((o) =>
           (o._id || o.id) === (order._id || order.id)
             ? {
-                ...o,
-                shiprocketCreated: true,
-                shiprocketOrderId: response.shiprocketOrderId,
-                shipmentId: response.shipmentId,
-                awbCode: response.awbCode || "",
-                courierName: response.courierName || "",
-                status: "confirmed" // Auto confirm when Shiprocket order is created
-              }
+              ...o,
+              shiprocketCreated: true,
+              shiprocketOrderId: response.shiprocketOrderId,
+              shipmentId: response.shipmentId,
+              awbCode: response.awbCode || "",
+              courierName: response.courierName || "",
+              status: "confirmed" // Auto confirm when Shiprocket order is created
+            }
             : o
         )
       );
-      
+
       // Update order status to confirmed on server
       try {
         await updateOrderStatus(order._id || order.id, "confirmed");
@@ -182,7 +180,7 @@ function Orders() {
     try {
       setShiprocketLoading(true);
       const trackingData = await getShiprocketTracking(order.awbCode);
-      
+
       Swal.fire({
         title: "Order Tracking",
         html: `
@@ -249,23 +247,23 @@ function Orders() {
         try {
           setShiprocketLoading(true);
           const response = await createShiprocketOrder(order._id || order.id);
-          
+
           // Update with Shiprocket data
           setOrders((prev) =>
             prev.map((o) =>
               (o._id || o.id) === (order._id || order.id)
                 ? {
-                    ...o,
-                    shiprocketCreated: true,
-                    shiprocketOrderId: response.shiprocketOrderId,
-                    shipmentId: response.shipmentId,
-                    awbCode: response.awbCode || "",
-                    courierName: response.courierName || "",
-                  }
+                  ...o,
+                  shiprocketCreated: true,
+                  shiprocketOrderId: response.shiprocketOrderId,
+                  shipmentId: response.shipmentId,
+                  awbCode: response.awbCode || "",
+                  courierName: response.courierName || "",
+                }
                 : o
             )
           );
-          
+
           setSuccess("Order confirmed and Shiprocket order created successfully!");
           Swal.fire({
             icon: "success",
@@ -576,8 +574,7 @@ function Orders() {
                   const itemsText = (o.items || [])
                     .map(
                       (it) =>
-                        `${it.productName || it.product?.name || "Item"} x${
-                          it.quantity || 1
+                        `${it.productName || it.product?.name || "Item"} x${it.quantity || 1
                         } (${it.size || "-"}, ${it.color || "-"})`
                     )
                     .join(", ");
@@ -767,12 +764,12 @@ function Orders() {
                               backgroundColor:
                                 o.paymentStatus === "paid"
                                   ? (themeColors.success ||
-                                      themeColors.primary) + "20"
+                                    themeColors.primary) + "20"
                                   : themeColors.background + "80",
                               color:
                                 o.paymentStatus === "paid"
                                   ? themeColors.success ||
-                                    themeColors.primary
+                                  themeColors.primary
                                   : themeColors.text,
                             }}
                           >
@@ -796,6 +793,9 @@ function Orders() {
           </table>
         </div>
       </div>
+      {!loading && pagination.totalPages > 1 && (
+        <Pagination pagination={pagination} onPageChange={handlePageChange} />
+      )}
     </div>
   );
 }
