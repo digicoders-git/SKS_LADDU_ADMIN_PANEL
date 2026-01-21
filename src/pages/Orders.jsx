@@ -120,7 +120,7 @@ function Orders() {
 
       const response = await createShiprocketOrder(order._id || order.id);
 
-      // Update local state
+      // Update local state with Shiprocket data
       setOrders((prev) =>
         prev.map((o) =>
           (o._id || o.id) === (order._id || order.id)
@@ -131,17 +131,25 @@ function Orders() {
                 shipmentId: response.shipmentId,
                 awbCode: response.awbCode || "",
                 courierName: response.courierName || "",
+                status: "confirmed" // Auto confirm when Shiprocket order is created
               }
             : o
         )
       );
+      
+      // Update order status to confirmed on server
+      try {
+        await updateOrderStatus(order._id || order.id, "confirmed");
+      } catch (statusError) {
+        console.error("Failed to update status to confirmed:", statusError);
+      }
 
-      setSuccess("Shiprocket order created successfully.");
+      setSuccess("Shiprocket order created and order confirmed successfully.");
       Swal.fire({
         icon: "success",
-        title: "Created",
-        text: "Shiprocket order created successfully.",
-        timer: 1500,
+        title: "Created & Confirmed",
+        text: "Shiprocket order created and order confirmed successfully.",
+        timer: 2000,
         showConfirmButton: false,
       });
     } catch (e) {
@@ -236,8 +244,8 @@ function Orders() {
         )
       );
 
-      // Auto-create Shiprocket when status = "confirmed" for COD orders
-      if (newStatus === "confirmed" && !order.shiprocketCreated && order.paymentMethod === "COD") {
+      // Auto-create Shiprocket when status = "confirmed" for all orders
+      if (newStatus === "confirmed" && !order.shiprocketCreated) {
         try {
           setShiprocketLoading(true);
           const response = await createShiprocketOrder(order._id || order.id);
@@ -268,12 +276,13 @@ function Orders() {
           });
         } catch (shiprocketError) {
           console.error("Shiprocket creation failed:", shiprocketError);
-          setSuccess("Order status updated but Shiprocket creation failed.");
+          // Don't revert status, just show warning
+          setSuccess("Order confirmed but Shiprocket creation failed. You can create it manually.");
           Swal.fire({
             icon: "warning",
             title: "Partial Success",
-            text: "Order status updated but Shiprocket creation failed.",
-            timer: 2000,
+            text: "Order confirmed but Shiprocket creation failed. You can create it manually.",
+            timer: 3000,
           });
         } finally {
           setShiprocketLoading(false);
@@ -724,7 +733,7 @@ function Orders() {
                             >
                               Not Created
                             </div>
-                            {(o.paymentMethod === "COD" && !o.shiprocketCreated) && (
+                            {!o.shiprocketCreated && (
                               <button
                                 onClick={() => handleCreateShiprocketOrder(o)}
                                 disabled={!isLoggedIn || shiprocketLoading}
