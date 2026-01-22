@@ -15,6 +15,9 @@ import {
 } from "react-icons/fa";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { FaFileInvoice, FaTimes, FaDownload } from "react-icons/fa";
 
 const fmtDateTime = (iso) =>
   iso
@@ -58,6 +61,9 @@ function Orders() {
     total: 0,
     totalPages: 0
   });
+
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const fetchOrders = async (page = 1) => {
     try {
@@ -334,6 +340,118 @@ function Orders() {
     });
   }, [orders, search, statusFilter]);
 
+  const handleDownloadInvoice = async (order) => {
+    const doc = new jsPDF();
+    const id = (order._id || order.id || "-").slice(-6).toUpperCase();
+    const date = fmtDateTime(order.createdAt).split(",")[0];
+
+    // Attempt to add logo using fetch (more reliable for dataURL conversion)
+    try {
+      const response = await fetch("/sks-logo.png");
+      const blob = await response.blob();
+      const logoBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+      doc.addImage(logoBase64, 'PNG', 15, 10, 25, 25);
+    } catch (err) {
+      doc.setFontSize(22);
+      doc.setTextColor(218, 165, 32);
+      doc.text("SKS LADDU", 15, 25);
+    }
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Date: ${date}`, 150, 20);
+    doc.text(`Invoice: #${id}`, 150, 26);
+
+    doc.setDrawColor(200);
+    doc.line(15, 40, 195, 40);
+
+    // Bill From and To
+    doc.setFontSize(10);
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "bold");
+    doc.text("BILL FROM:", 15, 50);
+    doc.text("BILL TO:", 140, 50);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(50);
+    doc.text("SKS Laddu", 15, 57);
+    doc.text("Ahirawan, Sandila, UP", 15, 62);
+    doc.text("Ph: 8467831372", 15, 67);
+
+    const shipping = order.shippingAddress || {};
+    doc.text(shipping.name || "-", 140, 57);
+    doc.text(shipping.phone || "-", 140, 62);
+    doc.text(`${shipping.addressLine1 || ""}`, 140, 67);
+    doc.text(`${shipping.city || ""}`, 140, 72);
+
+    // PDF specific currency formatter (avoiding ₹ symbol)
+    const fmtPDF = (n) =>
+      typeof n === "number"
+        ? `Rs. ${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
+        : n ?? "-";
+
+    // Items table
+    const tableRows = (order.items || []).map((item) => [
+      item.productName || item.product?.name || "Item",
+      item.quantity,
+      fmtPDF(item.productPrice || 0),
+      fmtPDF((item.productPrice || 0) * (item.quantity || 1)),
+    ]);
+
+    autoTable(doc, {
+      startY: 82,
+      head: [["PRODUCT", "QTY", "RATE", "PRICE"]],
+      body: tableRows,
+      theme: "grid",
+      headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: "bold", lineWidth: 0.1 },
+      styles: { fontSize: 9, halign: "left" },
+      columnStyles: {
+        1: { halign: "center", cellWidth: 15 },
+        2: { halign: "right", cellWidth: 35 },
+        3: { halign: "right", cellWidth: 35 }
+      },
+      margin: { left: 15, right: 15 },
+    });
+
+    let finalY = (doc).lastAutoTable.finalY + 10;
+    doc.setFontSize(10);
+    doc.setTextColor(80);
+    doc.setFont("helvetica", "normal");
+
+    const summaryX = 140;
+    const valueX = 195;
+
+    const drawLine = (label, value, y) => {
+      doc.text(label, summaryX, y);
+      doc.text(value, valueX, y, { align: "right" });
+    };
+
+    drawLine("Subtotal:", fmtPDF(order.subtotal || 0), finalY);
+    finalY += 5;
+
+    if (order.discount > 0) {
+      drawLine("Discount:", `-${fmtPDF(order.discount)}`, finalY);
+      finalY += 5;
+    }
+
+    drawLine("Shipping Charges:", fmtPDF(order.shippingCharges || 0), finalY);
+    finalY += 5;
+
+    drawLine("Handling Fee:", fmtPDF(order.handlingFee || 0), finalY);
+    finalY += 8;
+
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "bold");
+    drawLine("Total Amount:", fmtPDF(order.total), finalY);
+
+    doc.save(`Invoice_${id}.pdf`);
+  };
+
   const statusBadgeStyle = (status) => {
     const base = {
       padding: "2px 8px",
@@ -527,11 +645,11 @@ function Orders() {
                   "Customer",
                   "Items",
                   "Amount",
-                  "Offer",
                   "Status",
                   "Shiprocket",
                   "Payment",
                   "Created",
+                  "Invoice"
                 ].map((h) => (
                   <th
                     key={h}
@@ -635,14 +753,6 @@ function Orders() {
                         <div className="font-semibold">
                           Total: {fmtCurrency(o.total)}
                         </div>
-                      </td>
-
-                      {/* Offer */}
-                      <td
-                        className="px-4 py-2 text-xs"
-                        style={{ color: themeColors.text }}
-                      >
-                        {o.offerCode || "-"}
                       </td>
 
                       {/* Status + change control */}
@@ -785,6 +895,25 @@ function Orders() {
                       >
                         {fmtDateTime(o.createdAt)}
                       </td>
+
+                      {/* Invoice */}
+                      <td className="px-4 py-2 text-xs">
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(o);
+                            setShowInvoiceModal(true);
+                          }}
+                          className="px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all hover:scale-105"
+                          style={{
+                            backgroundColor: themeColors.primary + "15",
+                            color: themeColors.primary,
+                            border: `1px solid ${themeColors.primary}30`
+                          }}
+                        >
+                          <FaFileInvoice />
+                          View
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -795,6 +924,133 @@ function Orders() {
       </div>
       {!loading && pagination.totalPages > 1 && (
         <Pagination pagination={pagination} onPageChange={handlePageChange} />
+      )}
+
+      {/* Invoice Modal */}
+      {showInvoiceModal && selectedOrder && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div
+            className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl transform transition-all"
+            style={{ backgroundColor: themeColors.surface }}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: themeColors.border }}>
+              <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: themeColors.text }}>
+                <FaFileInvoice className="text-yellow-500" />
+                Order Invoice
+              </h3>
+              <button
+                onClick={() => setShowInvoiceModal(false)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                style={{ color: themeColors.text }}
+              >
+                <FaTimes size={20} />
+              </button>
+            </div>
+
+            {/* Modal Content - Scrollable */}
+            <div className="p-4 max-h-[60vh] overflow-y-auto overflow-x-hidden">
+              {/* Invoice Top */}
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <img src="/sks-logo.png" alt="SKS Logo" className="h-12 w-auto mb-1" />
+                  <p className="text-[9px] font-bold opacity-30 tracking-widest uppercase">Official Invoice</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] opacity-60" style={{ color: themeColors.text }}>Date: {fmtDateTime(selectedOrder.createdAt).split(",")[0]}</p>
+                  <p className="text-sm font-bold" style={{ color: themeColors.text }}>
+                    Invoice: <span className="text-yellow-600">#{selectedOrder._id.slice(-6).toUpperCase()}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="p-2.5 rounded-xl bg-gray-50/50 border border-gray-100">
+                  <h4 className="text-[9px] font-bold uppercase tracking-wider opacity-50 mb-0.5" style={{ color: themeColors.text }}>BILL FROM:</h4>
+                  <p className="font-bold text-sm" style={{ color: themeColors.text }}>SKS Laddu</p>
+                  <p className="text-[11px] opacity-70" style={{ color: themeColors.text }}>Ahirawan, Sandila, UP</p>
+                </div>
+                <div className="text-right p-2.5 rounded-xl bg-gray-50/50 border border-gray-100">
+                  <h4 className="text-[9px] font-bold uppercase tracking-wider opacity-50 mb-0.5" style={{ color: themeColors.text }}>BILL TO:</h4>
+                  <p className="font-bold text-sm" style={{ color: themeColors.text }}>{selectedOrder.shippingAddress?.name || "-"}</p>
+                  <p className="text-[11px] opacity-70" style={{ color: themeColors.text }}>{selectedOrder.shippingAddress?.phone || "-"}</p>
+                  <p className="text-[10px] opacity-70 leading-tight" style={{ color: themeColors.text }}>
+                    {selectedOrder.shippingAddress?.addressLine1}<br />
+                    {selectedOrder.shippingAddress?.city}
+                  </p>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div className="mb-2 overflow-hidden rounded-xl border border-gray-100">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="bg-gray-50" style={{ borderColor: themeColors.border }}>
+                      <th className="text-left py-2 px-3 opacity-70 font-bold">PRODUCT</th>
+                      <th className="text-center py-2 px-2 opacity-70 font-bold">QTY</th>
+                      <th className="text-right py-2 px-2 opacity-70 font-bold">RATE</th>
+                      <th className="text-right py-2 px-3 opacity-70 font-bold">PRICE</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {(selectedOrder.items || []).map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="py-2 px-3 font-semibold" style={{ color: themeColors.text }}>{item.productName || item.product?.name || "Item"}</td>
+                        <td className="py-2 px-2 text-center" style={{ color: themeColors.text }}>{item.quantity}</td>
+                        <td className="py-2 px-2 text-right" style={{ color: themeColors.text }}>{fmtCurrency(item.productPrice || 0)}</td>
+                        <td className="py-2 px-3 text-right font-bold" style={{ color: themeColors.text }}>{fmtCurrency((item.productPrice || 0) * (item.quantity || 1))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer - Fixed Summary & Actions */}
+            <div className="p-4 border-t bg-gray-50/50" style={{ borderColor: themeColors.border }}>
+              <div className="flex justify-between items-start mb-3">
+                <div className="space-y-0.5">
+                  <div className="flex justify-between w-36 text-[10px] opacity-60">
+                    <span>Subtotal:</span>
+                    <span>{fmtCurrency(selectedOrder.subtotal)}</span>
+                  </div>
+                  {selectedOrder.discount > 0 && (
+                    <div className="flex justify-between w-36 text-[10px] text-green-600 font-medium">
+                      <span>Discount:</span>
+                      <span>-{fmtCurrency(selectedOrder.discount)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex justify-between w-36 text-[10px] opacity-60">
+                    <span>Shipping:</span>
+                    <span>{fmtCurrency(selectedOrder.shippingCharges || 0)}</span>
+                  </div>
+                  <div className="flex justify-between w-36 text-[10px] opacity-60">
+                    <span>Handling:</span>
+                    <span>{fmtCurrency(selectedOrder.handlingFee || 0)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[10px] font-bold opacity-40 uppercase">Total:</span>
+                  <h3 className="text-2xl font-black text-slate-900">
+                    {fmtCurrency(selectedOrder.total)}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => handleDownloadInvoice(selectedOrder)}
+                  className="bg-slate-900 text-white px-8 py-1 rounded-xl flex items-center gap-2 hover:bg-slate-800 transition-all font-bold shadow-lg transform hover:-translate-y-0.5"
+                >
+                  <FaDownload />
+                  PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,12 +1,12 @@
 // src/pages/Sidebar.jsx
 import { Link } from "react-router-dom";
 import { memo } from "react";
-import { 
-  FaTachometerAlt, 
-  FaGavel, 
-  FaBox, 
-  FaUsers, 
-  FaChartBar, 
+import {
+  FaTachometerAlt,
+  FaGavel,
+  FaBox,
+  FaUsers,
+  FaChartBar,
   FaCog,
   FaSignOutAlt,
   FaTimes,
@@ -15,13 +15,12 @@ import {
 
 const SidebarItem = memo(({ route, isActive, themeColors, onClose }) => {
   const IconComponent = route.icon;
-  
+
   return (
     <Link
       to={route.path}
-      className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 ${
-        isActive ? "shadow-md" : "hover:shadow-sm"
-      }`}
+      className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 ${isActive ? "shadow-md" : "hover:shadow-sm"
+        }`}
       style={{
         color: isActive ? themeColors.primary : themeColors.text,
         backgroundColor: isActive
@@ -94,9 +93,8 @@ const Sidebar = ({
       )}
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 transform ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0 lg:static lg:inset-0 transition-transform duration-300 ease-in-out w-64 flex flex-col border-r`}
+        className={`fixed inset-y-0 left-0 z-50 transform ${isOpen ? "translate-x-0" : "-translate-x-full"
+          } lg:translate-x-0 lg:static lg:inset-0 transition-transform duration-300 ease-in-out w-64 flex flex-col border-r`}
         style={{
           backgroundColor: themeColors.surface,
           borderColor: themeColors.border,
@@ -108,7 +106,7 @@ const Sidebar = ({
           style={{ borderColor: themeColors.border }}
         >
           <div className="flex items-center">
-            <div className="w-16 h-14 rounded-lg flex items-center justify-center mr-1 bg-white">
+            <div className="w-16 h-14 rounded-lg flex items-center justify-center mr-4 bg-white">
               <img
                 src="sks-logo.png"
                 alt="Auction Here Logo"
@@ -116,7 +114,7 @@ const Sidebar = ({
               />
             </div>
             <h1
-              className="text-xl font-bold"
+              className="text-sm font-bold"
               style={{ color: themeColors.primary }}
             >
               SKS Admin
