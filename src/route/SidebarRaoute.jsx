@@ -10,6 +10,7 @@ import {
   FaKey,
   FaBlog,
   FaVideo,
+  FaMoneyBillWave,
 } from "react-icons/fa";
 
 // pages
@@ -24,6 +25,7 @@ const ReviewVideos = lazy(() => import("../pages/ReviewVideos"));
 const Blogs = lazy(() => import("../pages/Blogs"));
 const ChangePassword = lazy(() => import("../pages/ChangePassword"));
 const Users = lazy(() => import("../pages/Users"));
+const PayMethods = lazy(() => import("../pages/PayMethods"));
 
 const routes = [
   { path: "/dashboard", component: Dashboard, name: "Dashboard", icon: FaTachometerAlt },
@@ -35,6 +37,7 @@ const routes = [
   { path: "/enquiries", component: Enquiries, name: "Enquiries", icon: FaEnvelopeOpenText },
   { path: "/sliders", component: Sliders, name: "Sliders", icon: FaImages },
   { path: "/review-videos", component: ReviewVideos, name: "Review Videos", icon: FaVideo },
+  { path: "/pay-methods", component: PayMethods, name: "Pay Methods", icon: FaMoneyBillWave },
   // { path: "/blogs", component: Blogs, name: "Blogs", icon: FaBlog },
   { path: "/change-password", component: ChangePassword, name: "Change Password", icon: FaKey },
 ];
