@@ -347,14 +347,25 @@ function Orders() {
 
     // Attempt to add logo using fetch (more reliable for dataURL conversion)
     try {
-      const response = await fetch("/sks-logo.png");
+      const response = await fetch("/sks-logo.jpg");
       const blob = await response.blob();
       const logoBase64 = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result);
         reader.readAsDataURL(blob);
       });
-      doc.addImage(logoBase64, 'PNG', 15, 10, 25, 25);
+      
+      // Draw circular background
+      doc.setFillColor(255, 255, 255);
+      doc.circle(27.5, 22.5, 12.5, 'F');
+      
+      // Add image (will be clipped by white circle visually)
+      doc.addImage(logoBase64, 'JPEG', 15, 10, 25, 25);
+      
+      // Draw circular border
+      doc.setDrawColor(218, 165, 32);
+      doc.setLineWidth(0.5);
+      doc.circle(27.5, 22.5, 12.5, 'S');
     } catch (err) {
       doc.setFontSize(22);
       doc.setTextColor(218, 165, 32);
@@ -431,14 +442,15 @@ function Orders() {
     ]);
 
     autoTable(doc, {
-      startY: 82,
+      startY: billToY + 5, // Dynamic start with 5px gap
       head: [["PRODUCT", "QTY", "RATE", "PRICE"]],
       body: tableRows,
       theme: "grid",
       headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: "bold", lineWidth: 0.1 },
-      styles: { fontSize: 9, halign: "left" },
+      styles: { fontSize: 9, halign: "left", cellPadding: 3 },
       columnStyles: {
-        1: { halign: "center", cellWidth: 15 },
+        0: { cellWidth: 80 },
+        1: { halign: "center", cellWidth: 20 },
         2: { halign: "right", cellWidth: 35 },
         3: { halign: "right", cellWidth: 35 }
       },
@@ -981,7 +993,7 @@ function Orders() {
               {/* Invoice Top */}
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <img src="/sks-logo.png" alt="SKS Logo" className="h-12 w-auto mb-1" />
+                  <img src="/sks-logo.jpg" alt="SKS Logo" className="h-12 w-12 rounded-full object-cover mb-1" />
                   <p className="text-[9px] font-bold opacity-30 tracking-widest uppercase">Official Invoice</p>
                 </div>
                 <div className="text-right">

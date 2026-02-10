@@ -106,11 +106,11 @@ const Sidebar = ({
           style={{ borderColor: themeColors.border }}
         >
           <div className="flex items-center">
-            <div className="w-16 h-14 rounded-lg flex items-center justify-center mr-4 bg-white">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mr-4 bg-white overflow-hidden">
               <img
-                src="sks-logo.png"
+                src="sks-logo.jpg"
                 alt="Auction Here Logo"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
               />
             </div>
             <h1
