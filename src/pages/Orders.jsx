@@ -383,10 +383,38 @@ function Orders() {
     doc.text("Ph: 8467831372", 15, 67);
 
     const shipping = order.shippingAddress || {};
-    doc.text(shipping.name || "-", 140, 57);
-    doc.text(shipping.phone || "-", 140, 62);
-    doc.text(`${shipping.addressLine1 || ""}`, 140, 67);
-    doc.text(`${shipping.city || ""}`, 140, 72);
+    
+    // Bill To section with proper text wrapping
+    let billToY = 57;
+    const maxWidth = 50; // Maximum width for text wrapping
+    const lineHeight = 5;
+    
+    // Name
+    doc.text(shipping.name || "-", 140, billToY);
+    billToY += lineHeight;
+    
+    // Phone
+    doc.text(shipping.phone || "-", 140, billToY);
+    billToY += lineHeight;
+    
+    // Address Line 1 with wrapping
+    if (shipping.addressLine1) {
+      const addr1Lines = doc.splitTextToSize(shipping.addressLine1, maxWidth);
+      doc.text(addr1Lines, 140, billToY);
+      billToY += addr1Lines.length * lineHeight;
+    }
+    
+    // Address Line 2 with wrapping (if exists)
+    if (shipping.addressLine2) {
+      const addr2Lines = doc.splitTextToSize(shipping.addressLine2, maxWidth);
+      doc.text(addr2Lines, 140, billToY);
+      billToY += addr2Lines.length * lineHeight;
+    }
+    
+    // City, State, Pincode
+    const cityStatePin = `${shipping.city || ""}, ${shipping.state || ""} - ${shipping.pincode || ""}`;
+    const cityLines = doc.splitTextToSize(cityStatePin, maxWidth);
+    doc.text(cityLines, 140, billToY);
 
     // PDF specific currency formatter (avoiding ₹ symbol)
     const fmtPDF = (n) =>
