@@ -79,7 +79,7 @@ const Login = () => {
       >
         {/* Branding Section */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center bg-white p-2 shadow">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center bg-white shadow">
             <img
               src="sks-logo.jpg"
               alt="SKS Logo"
